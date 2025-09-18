@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen, Camera, and Mic Recorder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        video {
+            border: 2px solid #333;
+            border-radius: 5px;
+            max-width: 80%;
+            margin: 10px;
+        }
+        #status {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Screen, Camera, and Mic Recorder</h1>
+    <button id="startButton">Start Sharing</button>
+    <button id="stopButton" disabled>Stop Sharing</button>
+    <video id="preview" autoplay muted playsinline style="display: none;"></video>
+    <p id="status"></p>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('status');
+
+        async function startSharing() {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+                const cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+                const combinedStream = new MediaStream([
+                    ...screenStream.getVideoTracks(),
+                    ...cameraStream.getVideoTracks(),
+                    ...screenStream.getAudioTracks(),
+                    ...cameraStream.getAudioTracks()
+                ]);
+                preview.srcObject = combinedStream;
+                preview.style.display = 'block';
+                mediaRecorder = new MediaRecorder(combinedStream, {
+                    mimeType: 'video/webm;codecs=vp9,opus'
+                });
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `recording-${new Date().toISOString()}.webm`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    recordedChunks = [];
+                    preview.srcObject = null;
+                    preview.style.display = 'none';
+                    status.textContent = 'Recording saved!';
+                };
+                mediaRecorder.start();
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                status.textContent = 'Recording...';
+                screenStream.getVideoTracks()[0].onended = () => {
+                    stopSharing();
+                };
+            } catch (err) {
+                console.error('Error:', err);
+                status.textContent = 'Failed to start sharing: ' + err.message;
+            }
+        }
+
+        function stopSharing() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                status.textContent = 'Stopped recording...';
+            }
+        }
+
+        startButton.addEventListener('click', startSharing);
+        stopButton.addEventListener('click', stopSharing);
+    </script>
+</body>
+</html>
