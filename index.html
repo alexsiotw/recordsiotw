@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen, Camera, and Mic Recorder</title>
+    <title>SIOTW</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,12 +40,6 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        video {
-            border: 2px solid #333;
-            border-radius: 5px;
-            max-width: 80%;
-            margin: 10px;
-        }
         #status {
             margin-top: 10px;
             font-size: 16px;
@@ -54,9 +48,8 @@
     </style>
 </head>
 <body>
-    <button id="startButton">START</button>
-    <button id="stopButton" disabled>STOP</button>
-    <video id="preview" autoplay muted playsinline style="display: none;"></video>
+    <button id="startButton">Start Sharing</button>
+    <button id="stopButton" disabled>Stop Sharing</button>
     <p id="status"></p>
 
     <script>
@@ -64,7 +57,6 @@
         let recordedChunks = [];
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
-        const preview = document.getElementById('preview');
         const status = document.getElementById('status');
 
         async function startSharing() {
@@ -83,8 +75,6 @@
                     ...screenStream.getAudioTracks(),
                     ...cameraStream.getAudioTracks()
                 ]);
-                preview.srcObject = combinedStream;
-                preview.style.display = 'block';
                 mediaRecorder = new MediaRecorder(combinedStream, {
                     mimeType: 'video/webm;codecs=vp9,opus'
                 });
@@ -102,17 +92,12 @@
                     a.click();
                     URL.revokeObjectURL(url);
                     recordedChunks = [];
-                    preview.srcObject = null;
-                    preview.style.display = 'none';
                     status.textContent = 'Recording saved!';
                 };
                 mediaRecorder.start();
                 startButton.disabled = true;
                 stopButton.disabled = false;
-                status.textContent = 'Recording...';
-                screenStream.getVideoTracks()[0].onended = () => {
-                    stopSharing();
-                };
+                status.textContent = 'Recording... Click "Stop Sharing" or end screen sharing to save.';
             } catch (err) {
                 console.error('Error:', err);
                 status.textContent = 'Failed to start sharing: ' + err.message;
